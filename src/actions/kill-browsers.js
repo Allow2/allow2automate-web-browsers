@@ -24,7 +24,7 @@
  * The script function is serialized and sent to the agent, where it runs
  * in a sandboxed environment when triggered with arguments from the parent.
  */
-module.exports = {
+export default {
     id: 'kill-browsers',
     platforms: ['win32', 'darwin', 'linux'],
 

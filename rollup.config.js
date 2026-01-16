@@ -19,7 +19,9 @@ export default {
     ],
     plugins: [
         external(),
-        nodeResolve(),
+        nodeResolve({
+            extensions: ['.js', '.jsx', '.json']
+        }),
         commonjs({
             include: 'node_modules/**'
         }),

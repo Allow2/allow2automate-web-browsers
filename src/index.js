@@ -18,14 +18,14 @@
 import TabContent from './components/TabContent';
 
 // Import parent-side controllers
-const BrowserTimeTracker = require('./parent/BrowserTimeTracker');
-const QuotaEnforcer = require('./parent/QuotaEnforcer');
-const AgentBrowserManager = require('./parent/AgentBrowserManager');
+import BrowserTimeTracker from './parent/BrowserTimeTracker';
+import QuotaEnforcer from './parent/QuotaEnforcer';
+import AgentBrowserManager from './parent/AgentBrowserManager';
 
 // Import monitor and action definitions for agent deployment
-const browserDetectorMonitor = require('./monitors/browser-detector');
-const killBrowsersAction = require('./actions/kill-browsers');
-const showWarningAction = require('./actions/show-warning');
+import browserDetectorMonitor from './monitors/browser-detector';
+import killBrowsersAction from './actions/kill-browsers';
+import showWarningAction from './actions/show-warning';
 
 /**
  * Web Browsers Plugin Factory
@@ -606,7 +606,4 @@ function plugin(context) {
     return webBrowsers;
 }
 
-module.exports = {
-    plugin,
-    TabContent
-};
+export { plugin, TabContent };

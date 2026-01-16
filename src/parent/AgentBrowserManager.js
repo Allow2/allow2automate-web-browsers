@@ -316,4 +316,4 @@ class AgentBrowserManager {
     }
 }
 
-module.exports = AgentBrowserManager;
+export default AgentBrowserManager;

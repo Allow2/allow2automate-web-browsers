@@ -23,7 +23,7 @@
  * The script function is serialized and sent to the agent, where it runs
  * in a sandboxed environment with access to Node.js built-in modules.
  */
-module.exports = {
+export default {
     id: 'browser-detector',
     interval: 10000,  // Check every 10 seconds (configurable from parent)
     platforms: ['win32', 'darwin', 'linux'],

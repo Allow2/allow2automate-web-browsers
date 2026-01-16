@@ -14,7 +14,7 @@
 
 'use strict';
 
-const EventEmitter = require('events');
+import { EventEmitter } from 'events';
 
 /**
  * QuotaEnforcer
@@ -295,4 +295,4 @@ class QuotaEnforcer extends EventEmitter {
     }
 }
 
-module.exports = QuotaEnforcer;
+export default QuotaEnforcer;

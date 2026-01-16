@@ -14,7 +14,7 @@
 
 'use strict';
 
-const EventEmitter = require('events');
+import { EventEmitter } from 'events';
 
 /**
  * BrowserTimeTracker
@@ -369,4 +369,4 @@ class BrowserTimeTracker extends EventEmitter {
     }
 }
 
-module.exports = BrowserTimeTracker;
+export default BrowserTimeTracker;
