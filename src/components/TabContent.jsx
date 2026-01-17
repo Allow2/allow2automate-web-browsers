@@ -19,6 +19,9 @@ import React, { Component } from 'react';
 /**
  * TabContent - React UI component for the Web Browsers plugin.
  * Displays browser monitoring status, detected browsers, and usage information.
+ *
+ * Uses this.props.ipc for IPC communication - the host app provides an ipc prop
+ * that automatically prefixes channels with the plugin name.
  */
 class TabContent extends Component {
     constructor(props) {
@@ -35,6 +38,35 @@ class TabContent extends Component {
         };
 
         this.refreshInterval = null;
+    }
+
+    /**
+     * Helper to invoke IPC using the props.ipc interface which has auto-prefixed channels
+     * @param {string} channel - Channel name (prefix added automatically by host)
+     * @param {any} args - Optional arguments
+     * @returns {Promise<[error, result]>} - Response tuple
+     */
+    async invokeIPC(channel, args) {
+        // Use props.ipc which is provided by the host with auto-prefixed channels
+        // Falls back to window.ipcRenderer for compatibility
+        const ipc = this.props.ipc || this.props.ipcRenderer || window.ipcRenderer;
+
+        if (!ipc) {
+            console.error('[WebBrowsers TabContent] No IPC interface available');
+            return [new Error('IPC not available'), null];
+        }
+
+        try {
+            const result = await ipc.invoke(channel, args);
+            // Handle both tuple format [err, result] and direct result
+            if (Array.isArray(result) && result.length === 2) {
+                return result;
+            }
+            return [null, result];
+        } catch (error) {
+            console.error(`[WebBrowsers TabContent] IPC error on ${channel}:`, error);
+            return [error, null];
+        }
     }
 
     componentDidMount() {
@@ -56,7 +88,7 @@ class TabContent extends Component {
         try {
             // Use IPC to get status from main process
             if (window.ipcRenderer) {
-                const [err, result] = await window.ipcRenderer.invoke('webBrowsers:getStatus');
+                const [err, result] = await this.invokeIPC('webBrowsers:getStatus');
                 if (err) throw new Error(err.message || 'Failed to get status');
 
                 this.setState({
@@ -66,13 +98,13 @@ class TabContent extends Component {
                 });
 
                 // Load agents
-                const [agentErr, agentResult] = await window.ipcRenderer.invoke('webBrowsers:getAgents');
+                const [agentErr, agentResult] = await this.invokeIPC('webBrowsers:getAgents');
                 if (!agentErr && agentResult) {
                     this.setState({ agents: agentResult.agents || [] });
                 }
 
                 // Load violations
-                const [violErr, violResult] = await window.ipcRenderer.invoke('webBrowsers:getViolations', { limit: 10 });
+                const [violErr, violResult] = await this.invokeIPC('webBrowsers:getViolations', { limit: 10 });
                 if (!violErr && violResult) {
                     this.setState({ violations: violResult.violations || [] });
                 }

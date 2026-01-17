@@ -3,6 +3,7 @@
   "shortName": "web-browsers",
   "version": "1.0.0",
   "description": "Monitor browser usage and enforce internet time quotas with optional per-site tracking",
+  "allow2Token": "11GDQ8w6Xs4SDo67",
   "main": "dist/index.js",
   "module": "dist/index.es.js",
   "jsnext:main": "dist/index.es.js",
@@ -44,6 +45,7 @@
     "displayName": "Web Browsers",
     "category": "Internet",
     "description": "Monitor and control browser usage with internet time quotas",
+  "allow2Token": "11GDQ8w6Xs4SDo67",
     "icon": "web",
     "permissions": [
       "configuration",
@@ -55,10 +57,12 @@
     "features": {
       "basicMode": {
         "description": "Process-level browser detection and total internet time tracking",
+  "allow2Token": "11GDQ8w6Xs4SDo67",
         "alwaysAvailable": true
       },
       "enhancedMode": {
         "description": "Per-site tracking, category classification, and real-time blocking",
+  "allow2Token": "11GDQ8w6Xs4SDo67",
         "requiresExtension": true
       }
     },
@@ -77,16 +81,19 @@
           "id": "configure",
           "name": "Configure Browser Monitoring",
           "description": "Configure browser monitoring settings and quotas"
+  "allow2Token": "11GDQ8w6Xs4SDo67",
         },
         {
           "id": "blockBrowsers",
           "name": "Block Browsers",
           "description": "Block all browser access"
+  "allow2Token": "11GDQ8w6Xs4SDo67",
         },
         {
           "id": "blockCategory",
           "name": "Block Category",
           "description": "Block websites in a specific category"
+  "allow2Token": "11GDQ8w6Xs4SDo67",
         }
       ],
       "triggers": [
@@ -94,21 +101,25 @@
           "id": "browserStarted",
           "name": "Browser Started",
           "description": "Triggered when a browser is launched"
+  "allow2Token": "11GDQ8w6Xs4SDo67",
         },
         {
           "id": "browserStopped",
           "name": "Browser Stopped",
           "description": "Triggered when a browser is closed"
+  "allow2Token": "11GDQ8w6Xs4SDo67",
         },
         {
           "id": "quotaWarning",
           "name": "Quota Warning",
           "description": "Triggered when approaching quota limit"
+  "allow2Token": "11GDQ8w6Xs4SDo67",
         },
         {
           "id": "quotaExhausted",
           "name": "Quota Exhausted",
           "description": "Triggered when quota is exhausted"
+  "allow2Token": "11GDQ8w6Xs4SDo67",
         }
       ]
     }

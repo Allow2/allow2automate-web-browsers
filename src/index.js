@@ -39,6 +39,14 @@ import showWarningAction from './actions/show-warning';
  * @param {Object} context - Allow2Automate plugin context
  */
 function plugin(context) {
+    // Destructure ipcMain from context (like operating-system plugin does)
+    const {
+        ipcMain,
+        configurationUpdate,
+        statusUpdate,
+        services
+    } = context;
+
     let state = null;
     let agentService = null;
     let allow2Client = null;
@@ -78,17 +86,21 @@ function plugin(context) {
         agentService = context.services?.agent;
         allow2Client = context.services?.allow2Client || context.allow2;
 
+        // Setup IPC handlers FIRST - renderer communication must work regardless of agent service
+        setupIPCHandlers();
+
         if (!agentService) {
-            console.error('[WebBrowsers Plugin] Agent service not available - plugin will not function');
+            console.error('[WebBrowsers Plugin] Agent service not available - agent features will not function');
             context.statusUpdate({
-                status: 'error',
-                message: 'Agent service not available',
+                status: 'warning',
+                message: 'Agent service not available - limited functionality',
                 timestamp: Date.now()
             });
+            // IPC handlers are registered above, plugin can still provide status
             return;
         }
 
-        // Initialize parent-side controllers
+        // Initialize parent-side controllers (requires agentService)
         timeTracker = new BrowserTimeTracker(state, allow2Client);
         quotaEnforcer = new QuotaEnforcer(state, allow2Client, context);
         agentManager = new AgentBrowserManager(agentService, state, context);
@@ -111,9 +123,6 @@ function plugin(context) {
 
         // Setup event listeners for agent events
         setupEventListeners();
-
-        // Setup IPC handlers for renderer communication
-        setupIPCHandlers(context);
 
         console.log('[WebBrowsers Plugin] Loaded successfully');
         context.statusUpdate({
@@ -334,10 +343,16 @@ function plugin(context) {
     /**
      * Setup IPC handlers for renderer communication
      */
-    function setupIPCHandlers(context) {
+    function setupIPCHandlers() {
+        console.log('[WebBrowsers Plugin] Setting up IPC handlers...');
+        console.log('[WebBrowsers Plugin] ipcMain available:', !!ipcMain);
+
         // Get agents
-        context.ipcMain.handle('webBrowsers:getAgents', async (event) => {
+        ipcMain.handle('webBrowsers:getAgents', async (event) => {
             try {
+                if (!agentService) {
+                    return [null, { agents: [], serviceUnavailable: true }];
+                }
                 const agents = await agentService.listAgents();
                 return [null, {
                     agents: agents.map(a => ({
@@ -357,7 +372,7 @@ function plugin(context) {
         });
 
         // Link agent to child
-        context.ipcMain.handle('webBrowsers:linkAgent', async (event, { agentId, childId }) => {
+        ipcMain.handle('webBrowsers:linkAgent', async (event, { agentId, childId }) => {
             try {
                 if (!state.agents[agentId]) {
                     state.agents[agentId] = { id: agentId };
@@ -382,15 +397,17 @@ function plugin(context) {
         });
 
         // Unlink agent
-        context.ipcMain.handle('webBrowsers:unlinkAgent', async (event, { agentId }) => {
+        ipcMain.handle('webBrowsers:unlinkAgent', async (event, { agentId }) => {
             try {
                 if (state.agents[agentId]) {
                     state.agents[agentId].childId = null;
                     state.agents[agentId].enabled = false;
                 }
 
-                // End any active session
-                await timeTracker.endAllSessions(agentId);
+                // End any active session (if timeTracker available)
+                if (timeTracker) {
+                    await timeTracker.endAllSessions(agentId);
+                }
 
                 context.configurationUpdate(state);
                 return [null, { success: true }];
@@ -400,7 +417,7 @@ function plugin(context) {
         });
 
         // Get usage report
-        context.ipcMain.handle('webBrowsers:getUsage', async (event, { childId }) => {
+        ipcMain.handle('webBrowsers:getUsage', async (event, { childId }) => {
             try {
                 const childData = state.children[childId];
                 if (!childData) {
@@ -411,7 +428,7 @@ function plugin(context) {
                     usage: {
                         usageToday: childData.usageToday,
                         lastReset: childData.lastReset,
-                        sessions: timeTracker.getChildSessions(childId)
+                        sessions: timeTracker ? timeTracker.getChildSessions(childId) : []
                     }
                 }];
             } catch (error) {
@@ -420,7 +437,7 @@ function plugin(context) {
         });
 
         // Get violations
-        context.ipcMain.handle('webBrowsers:getViolations', async (event, { limit = 50 }) => {
+        ipcMain.handle('webBrowsers:getViolations', async (event, { limit = 50 }) => {
             try {
                 return [null, { violations: state.violations.slice(0, limit) }];
             } catch (error) {
@@ -429,7 +446,7 @@ function plugin(context) {
         });
 
         // Clear violations
-        context.ipcMain.handle('webBrowsers:clearViolations', async (event) => {
+        ipcMain.handle('webBrowsers:clearViolations', async (event) => {
             try {
                 state.violations = [];
                 context.configurationUpdate(state);
@@ -440,7 +457,7 @@ function plugin(context) {
         });
 
         // Get settings
-        context.ipcMain.handle('webBrowsers:getSettings', async (event) => {
+        ipcMain.handle('webBrowsers:getSettings', async (event) => {
             try {
                 return [null, { settings: state.settings }];
             } catch (error) {
@@ -449,13 +466,13 @@ function plugin(context) {
         });
 
         // Update settings
-        context.ipcMain.handle('webBrowsers:updateSettings', async (event, { settings }) => {
+        ipcMain.handle('webBrowsers:updateSettings', async (event, { settings }) => {
             try {
                 state.settings = { ...state.settings, ...settings };
                 context.configurationUpdate(state);
 
-                // Re-deploy monitors if interval changed
-                if (settings.checkInterval) {
+                // Re-deploy monitors if interval changed (only if agentService available)
+                if (settings.checkInterval && agentService) {
                     const agents = await agentService.listAgents();
                     for (const agent of agents) {
                         await agentService.updateMonitor(agent.id, {
@@ -473,8 +490,23 @@ function plugin(context) {
         });
 
         // Get status
-        context.ipcMain.handle('webBrowsers:getStatus', async (event) => {
+        ipcMain.handle('webBrowsers:getStatus', async (event) => {
             try {
+                if (!agentService) {
+                    // Return limited status when agent service unavailable
+                    const linkedAgents = Object.values(state.agents).filter(a => a.childId);
+                    const activeSessionCount = Object.keys(state.browserSessions).length;
+                    return [null, {
+                        agentCount: 0,
+                        activeAgents: 0,
+                        linkedAgents: linkedAgents.length,
+                        activeSessions: activeSessionCount,
+                        recentViolations: state.violations.slice(0, 10),
+                        settings: state.settings,
+                        lastSync: state.lastSync,
+                        serviceUnavailable: true
+                    }];
+                }
                 const agents = await agentService.listAgents();
                 const linkedAgents = Object.values(state.agents).filter(a => a.childId);
                 const activeSessionCount = Object.keys(state.browserSessions).length;
@@ -494,8 +526,11 @@ function plugin(context) {
         });
 
         // Manually trigger browser block (for testing/override)
-        context.ipcMain.handle('webBrowsers:blockBrowsers', async (event, { agentId, reason }) => {
+        ipcMain.handle('webBrowsers:blockBrowsers', async (event, { agentId, reason }) => {
             try {
+                if (!agentManager) {
+                    return [new Error('Agent service not available')];
+                }
                 await agentManager.triggerKillBrowsers(agentId, reason || 'Manual block');
                 return [null, { success: true }];
             } catch (error) {
@@ -606,4 +641,8 @@ function plugin(context) {
     return webBrowsers;
 }
 
-export { plugin, TabContent };
+module.exports = {
+    plugin,
+    TabContent,
+    requiresMainProcess: true
+};
